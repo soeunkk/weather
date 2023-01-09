@@ -1,5 +1,7 @@
 package com.soeunkk.weather.service;
 
+import com.soeunkk.weather.domain.DateWeather;
+import com.soeunkk.weather.domain.DateWeatherRepository;
 import com.soeunkk.weather.domain.Diary;
 import com.soeunkk.weather.domain.DiaryRepository;
 import java.io.BufferedReader;
@@ -16,6 +18,7 @@ import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -23,32 +26,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DiaryService {
 	private final DiaryRepository diaryRepository;
+	private final DateWeatherRepository dateWeatherRepository;
 	@Value("${openweathermap.key}")
 	private String openWeatherMapApiKey;
 
-	@Transactional(readOnly = true)
-	public List<Diary> readDiary(LocalDate date) {
-		return diaryRepository.findAllByDate(date);
-	}
-
-	@Transactional(readOnly = true)
-	public List<Diary> readDiaries(LocalDate startDate, LocalDate endDate) {
-		return diaryRepository.findAllByDateBetween(startDate, endDate);
-	}
-
 	@Transactional
-	public void createDiary(LocalDate date, String text) throws Exception {
+	@Scheduled(cron = "0 0 1 * * *")
+	public void saveWeatherDate() throws Exception {
+		dateWeatherRepository.save(getWeatherFromApi());
+	}
+
+	private DateWeather getWeatherFromApi() throws Exception {
 		String result = getWeatherString();
 		Map<String, Object> parsedWeather = parseWeather(result);
-		Diary nowDiary = Diary.builder()
-			.weather(parsedWeather.get("main").toString())
-			.icon(parsedWeather.get("icon").toString())
-			.temperature((Double) parsedWeather.get("temp"))
-			.text(text)
-			.date(date)
-			.build();
-
-		diaryRepository.save(nowDiary);
+		DateWeather dateWeather = new DateWeather();
+		dateWeather.setDate(LocalDate.now());
+		dateWeather.setWeather(parsedWeather.get("main").toString());
+		dateWeather.setIcon(parsedWeather.get("icon").toString());
+		dateWeather.setTemperature((Double) parsedWeather.get("temp"));
+		return dateWeather;
 	}
 
 	private String getWeatherString() throws Exception {
@@ -92,6 +88,37 @@ public class DiaryService {
 		resultMap.put("icon", weatherData.get("icon"));
 
 		return resultMap;
+	}
+
+	@Transactional(readOnly = true)
+	public List<Diary> readDiary(LocalDate date) {
+		return diaryRepository.findAllByDate(date);
+	}
+
+	@Transactional(readOnly = true)
+	public List<Diary> readDiaries(LocalDate startDate, LocalDate endDate) {
+		return diaryRepository.findAllByDateBetween(startDate, endDate);
+	}
+
+	@Transactional
+	public void createDiary(LocalDate date, String text) throws Exception {
+		DateWeather dateWeather = getDateWeather(date);
+		Diary nowDiary = Diary.builder()
+			.text(text)
+			.date(date)
+			.build();
+		nowDiary.setDateWeather(dateWeather);
+		diaryRepository.save(nowDiary);
+	}
+
+	private DateWeather getDateWeather(LocalDate date) throws Exception {
+		List<DateWeather> dateWeatherListFromDB = dateWeatherRepository.findAllByDate(date);
+		if (dateWeatherListFromDB.size() == 0) {
+			return getWeatherFromApi();
+		} else {
+			return dateWeatherListFromDB.get(0);
+		}
+
 	}
 
 	@Transactional
