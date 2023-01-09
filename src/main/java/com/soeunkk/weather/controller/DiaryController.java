@@ -23,7 +23,7 @@ public class DiaryController {
 	@GetMapping("/read/diary")
 	public List<Diary> getDiary(@RequestParam @DateTimeFormat(iso = ISO.DATE) LocalDate date) {
 		// 일기 List 형태로 반환
-		return diaryService.getDiary(date);
+		return diaryService.readDiary(date);
 	}
 
 	@GetMapping("/read/diaries")

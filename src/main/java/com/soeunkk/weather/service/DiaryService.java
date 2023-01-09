@@ -3,7 +3,6 @@ package com.soeunkk.weather.service;
 import com.soeunkk.weather.domain.Diary;
 import com.soeunkk.weather.domain.DiaryRepository;
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -27,14 +26,17 @@ public class DiaryService {
 	@Value("${openweathermap.key}")
 	private String openWeatherMapApiKey;
 
-	public List<Diary> getDiary(LocalDate date) {
+	@Transactional(readOnly = true)
+	public List<Diary> readDiary(LocalDate date) {
 		return diaryRepository.findAllByDate(date);
 	}
 
+	@Transactional(readOnly = true)
 	public List<Diary> readDiaries(LocalDate startDate, LocalDate endDate) {
 		return diaryRepository.findAllByDateBetween(startDate, endDate);
 	}
 
+	@Transactional
 	public void createDiary(LocalDate date, String text) throws Exception {
 		String result = getWeatherString();
 		Map<String, Object> parsedWeather = parseWeather(result);
@@ -92,12 +94,14 @@ public class DiaryService {
 		return resultMap;
 	}
 
+	@Transactional
 	public void updateDiary(LocalDate date, String text) {
 		Diary nowDiary = diaryRepository.getFirstByDate(date);
 		nowDiary.updateText(text);
 		diaryRepository.save(nowDiary);
 	}
 
+	@Transactional
 	public void deleteDiary(LocalDate date) {
 		diaryRepository.deleteAllByDate(date);
 	}
