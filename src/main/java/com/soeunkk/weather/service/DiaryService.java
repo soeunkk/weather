@@ -1,5 +1,6 @@
 package com.soeunkk.weather.service;
 
+import com.soeunkk.weather.WeatherApplication;
 import com.soeunkk.weather.domain.DateWeather;
 import com.soeunkk.weather.domain.DateWeatherRepository;
 import com.soeunkk.weather.domain.Diary;
@@ -17,6 +18,8 @@ import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
 import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -25,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Service
 public class DiaryService {
+	private static final Logger logger = LoggerFactory.getLogger(WeatherApplication.class);
+
 	private final DiaryRepository diaryRepository;
 	private final DateWeatherRepository dateWeatherRepository;
 	@Value("${openweathermap.key}")
@@ -33,7 +38,9 @@ public class DiaryService {
 	@Transactional
 	@Scheduled(cron = "0 0 1 * * *")
 	public void saveWeatherDate() throws Exception {
+		logger.info("started to load weather api");
 		dateWeatherRepository.save(getWeatherFromApi());
+		logger.info("end to load weather api");
 	}
 
 	private DateWeather getWeatherFromApi() throws Exception {
@@ -92,6 +99,7 @@ public class DiaryService {
 
 	@Transactional(readOnly = true)
 	public List<Diary> readDiary(LocalDate date) {
+		logger.debug("read diary");
 		return diaryRepository.findAllByDate(date);
 	}
 
@@ -102,6 +110,7 @@ public class DiaryService {
 
 	@Transactional
 	public void createDiary(LocalDate date, String text) throws Exception {
+		logger.info("started to create diary");
 		DateWeather dateWeather = getDateWeather(date);
 		Diary nowDiary = Diary.builder()
 			.text(text)
@@ -109,6 +118,7 @@ public class DiaryService {
 			.build();
 		nowDiary.setDateWeather(dateWeather);
 		diaryRepository.save(nowDiary);
+		logger.info("end to create diary");
 	}
 
 	private DateWeather getDateWeather(LocalDate date) throws Exception {

@@ -37,3 +37,4 @@ out/
 .vscode/
 
 application-security.properties
+logs
